@@ -88,6 +88,16 @@ function draw(){
   for(let x=0;x<=WORLD.width;x+=160){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,12/z);ctx.moveTo(x,WORLD.height);ctx.lineTo(x,WORLD.height-12/z);ctx.stroke()}
   for(let y=0;y<=WORLD.height;y+=160){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(12/z,y);ctx.moveTo(WORLD.width,y);ctx.lineTo(WORLD.width-12/z,y);ctx.stroke()}
   const cells=game.holders.flatMap(h=>h.cells.map(c=>({h,c}))).sort((a,b)=>a.c.mass-b.c.mass);
+  // Subtle links between nearby bubbles of the same color restore the holder map.
+  for(let i=0;i<cells.length;i++){
+    const {h,c}=cells[i];let nearest=null,best=1100;
+    for(let j=i+1;j<cells.length;j++){
+      const other=cells[j];if(other.h.color!==h.color)continue;
+      const d=Math.hypot(c.x-other.c.x,c.y-other.c.y);
+      if(d<best){nearest=other.c;best=d;}
+    }
+    if(nearest){ctx.beginPath();ctx.moveTo(c.x,c.y);ctx.lineTo(nearest.x,nearest.y);ctx.strokeStyle=h.color+'24';ctx.lineWidth=.8/z;ctx.stroke();}
+  }
   for(const f of game.food){if(f.x<minX-10||f.x>maxX+10||f.y<minY-10||f.y>maxY+10)continue;circle(f.x,f.y,Math.max(2.3,Math.sqrt(f.mass)*.65));ctx.fillStyle=f.color+'76';ctx.fill();}
   for(const obstacle of OBSTACLES){
     ctx.beginPath();obstacle.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();

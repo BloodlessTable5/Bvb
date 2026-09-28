@@ -8,7 +8,7 @@ Choose an alias and one of six translucent bubble colors, then enter the arena. 
 
 AI opponents hold their targets and use split attacks to catch smaller holders. They follow the same absorption and supply accounting rules as the player.
 
-The arena has a plain dark background, with small color-matched arrows at the screen edges pointing toward off-screen holders.
+The arena has a plain dark background with subtle connecting lines between nearby bubbles of the same color. Small color-matched arrows at the screen edges point toward off-screen holders.
 
 Absorb dots and smaller holders. A holder's share is the sum of all their bubbles divided by a fixed 50,000-token supply. Absorption transfers mass exactly; splitting and merging preserve it. Larger holders can eat you. The arena is an open space bounded at 3,200 × 2,400 world units, with no interior obstacles.
 
