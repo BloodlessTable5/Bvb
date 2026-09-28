@@ -6,11 +6,11 @@ A playable, dark bubble-map survival game. This version is a local simulation wi
 
 Choose an alias and one of six translucent bubble colors, then enter the arena. Move your mouse, use WASD or arrow keys, or drag on a touch screen. Pressing movement keys switches to keyboard control and ignores mouse movement until you click the arena. Releasing the keys stops movement. Holding the mouse at any screen edge keeps moving in that direction. Space splits, C consolidates after the 5-second cooldown, E sheds mass for a forward boost, and Escape pauses. Bubbles also merge naturally when you overlap them after the cooldown. On-screen split and consolidate buttons support touch play. The six-second spawn shield only protects you from being eaten; you can absorb smaller holders immediately.
 
-AI opponents hold their targets, route around solid obstacles, and use split attacks to catch smaller holders. They follow the same absorption and supply accounting rules as the player.
+AI opponents hold their targets and use split attacks to catch smaller holders. They follow the same absorption and supply accounting rules as the player.
 
 The arena has a plain dark background, with small color-matched arrows at the screen edges pointing toward off-screen holders.
 
-Absorb dots and smaller holders. A holder's share is the sum of all their bubbles divided by a fixed 50,000-token supply. Absorption transfers mass exactly; splitting and merging preserve it. Larger holders can eat you. The arena is bounded at 3,200 × 2,400 world units, with two solid squares and two solid triangles.
+Absorb dots and smaller holders. A holder's share is the sum of all their bubbles divided by a fixed 50,000-token supply. Absorption transfers mass exactly; splitting and merging preserve it. Larger holders can eat you. The arena is an open space bounded at 3,200 × 2,400 world units, with no interior obstacles.
 
 ## Source
 

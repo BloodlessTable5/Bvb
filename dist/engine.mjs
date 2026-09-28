@@ -4,12 +4,7 @@ export const WORLD = { width: 3200, height: 2400 };
 export const COLORS = ['#c3f774', '#61cbb4', '#73a7ed', '#aa8be8', '#e992b2', '#edb66f'];
 export const COLOR_NAMES = ['Acid green', 'Seafoam', 'Blue', 'Lilac', 'Rose', 'Amber'];
 export const MERGE_TIME = 5;
-export const OBSTACLES = [
-  {shape:'square',points:[{x:930,y:960},{x:1110,y:960},{x:1110,y:1140},{x:930,y:1140}]},
-  {shape:'square',points:[{x:2020,y:1660},{x:2200,y:1660},{x:2200,y:1840},{x:2020,y:1840}]},
-  {shape:'triangle',points:[{x:1900,y:570},{x:2050,y:830},{x:1750,y:830}]},
-  {shape:'triangle',points:[{x:1050,y:1670},{x:1190,y:1910},{x:910,y:1910}]}
-];
+export const OBSTACLES = [];
 export const radius = mass => Math.sqrt(mass) * 2.1;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const distance = (a, b) => Math.hypot(a.x-b.x, a.y-b.y);
