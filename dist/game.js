@@ -88,11 +88,11 @@ function draw(){
   for(let x=0;x<=WORLD.width;x+=160){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,12/z);ctx.moveTo(x,WORLD.height);ctx.lineTo(x,WORLD.height-12/z);ctx.stroke()}
   for(let y=0;y<=WORLD.height;y+=160){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(12/z,y);ctx.moveTo(WORLD.width,y);ctx.lineTo(WORLD.width-12/z,y);ctx.stroke()}
   const cells=game.holders.flatMap(h=>h.cells.map(c=>({h,c}))).sort((a,b)=>a.c.mass-b.c.mass);
-  // Subtle links between nearby bubbles of the same color restore the holder map.
+  // Link only a holder's own split bubbles; shared colors do not imply ownership.
   for(let i=0;i<cells.length;i++){
-    const {h,c}=cells[i];let nearest=null,best=1100;
+    const {h,c}=cells[i];let nearest=null,best=Infinity;
     for(let j=i+1;j<cells.length;j++){
-      const other=cells[j];if(other.h.color!==h.color)continue;
+      const other=cells[j];if(other.h.id!==h.id)continue;
       const d=Math.hypot(c.x-other.c.x,c.y-other.c.y);
       if(d<best){nearest=other.c;best=d;}
     }
