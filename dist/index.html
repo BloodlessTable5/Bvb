@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0d10"><meta name="description" content="A bubble-map survival arena. Split your wallet, absorb smaller holders, and climb the holder distribution.">
+  <title>HOLDER — Own the arena</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0d10'/%3E%3Ccircle cx='12' cy='18' r='8' fill='%23c3f774'/%3E%3Ccircle cx='23' cy='9' r='4' fill='%23c3f774'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="arena" aria-label="Holder arena. Move with your mouse, arrow keys, or touch. Space splits your bubble. M consolidates it." tabindex="0"></canvas>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Holder home"><span class="brand-mark"><i></i><i></i><i></i></span>HOLDER<span class="brand-dot">.io</span></a>
+    <div class="arena-title"><span class="live-dot"></span><span>THE BUBBLE ARENA</span><span class="divider"></span><span class="mode-label">PRACTICE</span></div>
+    <button id="help-button" class="icon-button" aria-label="How to play">?</button>
+  </header>
+  <main>
+    <div class="map-label"><span class="crosshair">⊕</span> SUPPLY MAP <span>/ 001</span></div>
+    <section class="join-panel panel" id="join-panel" aria-labelledby="join-heading">
+      <div class="eyebrow"><span class="small-bubble"></span> SMALL WALLET. BIG AMBITIONS.</div>
+      <h1 id="join-heading">Own the arena.</h1>
+      <p class="intro">Eat smaller holders. Grow your share.<br>Work your way to whale status.</p>
+      <form id="join-form">
+        <label class="field-label" for="username">Your alias</label>
+        <input id="username" name="username" type="text" placeholder="Enter a username" maxlength="18" autocomplete="nickname" required value="anon">
+        <fieldset><legend class="field-label">Your bubble <span id="color-name">Acid green</span></legend><div class="swatches" id="swatches"></div></fieldset>
+        <div class="identity-preview"><span class="preview-bubble" id="preview-bubble"></span><div><span id="preview-name">anon</span><code id="preview-wallet">0x71c4…8f2a</code></div><span class="wallet-badge">FAKE WALLET</span></div>
+        <button class="join-button" type="submit">Enter arena <span>↗</span></button>
+      </form>
+      <p class="practice-note"><span class="live-dot"></span> Practice arena · AI opponents</p>
+    </section>
+    <aside class="leaderboard panel" aria-label="Holder Distribution">
+      <div class="board-heading"><div><span class="eyebrow">THE BIGGEST BAGS</span><h2>Holder Distribution</h2></div><span class="chart-icon">▥</span></div>
+      <div class="board-labels"><span>HOLDER</span><span>% OF SUPPLY</span></div>
+      <ol id="leader-list"></ol>
+      <div id="your-ranking" class="your-ranking"><span>You’re next.</span><span>Join the arena ↗</span></div>
+      <div class="board-footer"><span><span class="live-dot"></span> <span id="holder-count">24</span> holders</span><span>50,000 supply</span></div>
+    </aside>
+    <section class="player-panel panel" id="player-panel" hidden aria-label="Your holding">
+      <div class="eyebrow">YOUR SHARE OF THE SUPPLY</div><div class="share-line"><strong id="player-share">0.00<span>%</span></strong><span id="player-rank">#25</span></div>
+      <div class="player-details"><span><b id="cell-count">1</b> <span id="cell-word">bubble</span></span><span><b id="eaten-count">0</b> holders eaten</span></div>
+      <div class="merge-track"><div id="merge-progress"></div></div><div class="merge-status" id="merge-status">One wallet. Make it count.</div>
+    </section>
+    <div class="arena-status" id="arena-status"><span class="status-tick"></span><span>Absorb. Split. Consolidate.</span></div>
+    <div class="feed" id="feed" aria-live="polite" aria-atomic="true"></div>
+    <div class="minimap panel" id="minimap"><canvas id="mini" width="160" height="108" aria-label="Arena minimap"></canvas><span>ARENA OVERVIEW</span></div>
+    <div class="action-controls" id="action-controls" hidden><button id="split-button"><kbd>SPACE</kbd> Split</button><button id="merge-button"><kbd>M</kbd> Consolidate</button></div>
+  </main>
+  <footer class="bottom-bar"><div class="control-hints"><span><i class="mouse-icon"></i> Move to steer</span><span><kbd>SPACE</kbd> Split</span><span><kbd>M</kbd> Consolidate</span><span><kbd>W</kbd> Eject</span></div><span class="footer-note">Fake wallets. Real survival.</span><button id="pause-button" hidden><kbd>ESC</kbd> Pause</button></footer>
+  <dialog id="help-dialog" class="panel modal"><button class="close-button" data-close="help-dialog" aria-label="Close instructions">×</button><div class="eyebrow">THE PLAYBOOK</div><h2>Grow your bag.</h2><p>Absorb supply dots and smaller holders. Their share becomes yours. Bigger holders can eat you. Stay inside the outer wall and steer around the solid shapes.</p><div class="help-row"><kbd>MOVE</kbd><span>Point your mouse, use arrow keys, or drag on the arena to steer.</span></div><div class="help-row"><kbd>SPACE</kbd><span>Split toward your pointer to catch smaller holders. Up to 16 bubbles.</span></div><div class="help-row"><kbd>M</kbd><span>Consolidate after a 10-second split cooldown. Bubbles also merge naturally when they touch.</span></div><div class="help-row"><kbd>W</kbd><span>Eject a little supply in the direction you’re moving.</span></div><p class="muted">Practice against AI opponents. Wallets and token holdings are fictional.</p><button class="join-button" data-close="help-dialog">Got it <span>↗</span></button></dialog>
+  <dialog id="pause-dialog" class="panel modal"><div class="eyebrow">TAKE A BREATHER</div><h2>Arena paused.</h2><p>Your bubbles are safe while you’re away.</p><button id="resume-button" class="join-button">Back to the arena <span>↗</span></button><button id="leave-button" class="secondary-button">Leave arena</button></dialog>
+  <dialog id="death-dialog" class="panel modal"><div class="eyebrow">EXIT LIQUIDITY</div><h2 id="death-heading">Your bag got eaten.</h2><p id="death-description"></p><div class="result-grid"><div><span>Peak holding</span><strong id="peak-result">0%</strong></div><div><span>Holders eaten</span><strong id="eaten-result">0</strong></div></div><button id="again-button" class="join-button">Run it back <span>↗</span></button><button id="edit-button" class="secondary-button">Change alias & color</button></dialog>
+  <script type="module" src="game.js"></script>
+</body>
+</html>
