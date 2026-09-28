@@ -1,3 +1,28 @@
+export const MOVEMENT_KEYS=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'];
+export class MovementControls {
+  constructor(){this.reset();}
+  reset(){this.mode='mouse';this.keys={};this.direction={x:1,y:0};}
+  press(code){this.keys[code]=true;if(MOVEMENT_KEYS.includes(code))this.mode='keyboard';}
+  release(code){delete this.keys[code];}
+  clear(){this.keys={};}
+  usePointer(){this.mode='mouse';this.clear();}
+  target(pointer,camera,center,width,height){
+    if(this.mode==='mouse'){
+      const target=steeringTarget(pointer,camera,center,width,height),dx=target.x-center.x,dy=target.y-center.y,length=Math.hypot(dx,dy);
+      if(length>1)this.direction={x:dx/length,y:dy/length};
+      return target;
+    }
+    const dx=Number(!!(this.keys.KeyD||this.keys.ArrowRight))-Number(!!(this.keys.KeyA||this.keys.ArrowLeft));
+    const dy=Number(!!(this.keys.KeyS||this.keys.ArrowDown))-Number(!!(this.keys.KeyW||this.keys.ArrowUp));
+    if(!dx&&!dy)return {...center};
+    const length=Math.hypot(dx,dy);this.direction={x:dx/length,y:dy/length};
+    return {x:center.x+this.direction.x*450,y:center.y+this.direction.y*450};
+  }
+  actionTarget(pointer,camera,center,width,height){
+    const target=this.target(pointer,camera,center,width,height);
+    return this.mode==='keyboard'||Math.hypot(target.x-center.x,target.y-center.y)<1?{x:center.x+this.direction.x*450,y:center.y+this.direction.y*450}:target;
+  }
+}
 // Screen-space input is reprojected every frame, so an edge pointer keeps moving.
 export function steeringTarget(pointer,camera,center,width,height) {
   if(!pointer.active)return {...center};

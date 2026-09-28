@@ -1,8 +1,9 @@
 import { Arena, COLORS, COLOR_NAMES, WORLD, SUPPLY, MERGE_TIME, OBSTACLES, radius, wallet, shortWallet } from './engine.mjs';
-import { steeringTarget, edgeIndicator } from './navigation.mjs';
+import { MovementControls, MOVEMENT_KEYS, edgeIndicator } from './navigation.mjs';
 const $=selector=>document.querySelector(selector);
 const canvas=$('#arena'),ctx=canvas.getContext('2d'),mini=$('#mini'),mctx=mini.getContext('2d');
 const game=new Arena();
+const controls=new MovementControls();
 let playerWallet=wallet(),color=COLORS[0],mode='lobby',paused=false,helpPaused=false;
 let width=0,height=0,dpr=1,lastTime=0,hudAt=0,toastUntil=0,touchActive=false;
 let camera={x:1600,y:1200,zoom:.6};
@@ -20,28 +21,30 @@ addEventListener('resize',resize);resize();
 function toast(text){$('#feed').textContent=text;$('#feed').classList.add('visible');toastUntil=performance.now()+2600;}
 function join(name=$('#username').value.trim(),selectedColor=color){
   name=name.trim().slice(0,18)||'anon';color=selectedColor;updateIdentity();
-  game.join(name,color,playerWallet);mode='playing';paused=false;keys={};pointer.active=false;touchActive=false;camera={x:1580,y:1330,zoom:.78};aim={x:1760,y:1330};
+  game.join(name,color,playerWallet);mode='playing';paused=false;keys={};controls.reset();pointer.active=false;touchActive=false;camera={x:1580,y:1330,zoom:.78};aim={x:1760,y:1330};
   document.body.classList.add('playing');$('#join-panel').hidden=true;$('#player-panel').hidden=false;$('#action-controls').hidden=false;$('#pause-button').hidden=false;$('.footer-note').hidden=true;
   for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
   try{localStorage.setItem('holder.preferences',JSON.stringify({name,color}))}catch{}
-  toast('You’re in. Absorb the dots and smaller holders.');updateHud();canvas.focus();return {name,wallet:playerWallet,share:1.8};
+  toast('You’re in. Absorb the dots and smaller holders.');lastTime=performance.now();updateHud();canvas.focus();return {name,wallet:playerWallet,share:1.8};
 }
 $('#join-form').addEventListener('submit',e=>{e.preventDefault();join()});
 function toLobby(){mode='lobby';paused=false;keys={};game.reset();document.body.classList.remove('playing');$('#join-panel').hidden=false;$('#player-panel').hidden=true;$('#action-controls').hidden=true;$('#pause-button').hidden=true;$('.footer-note').hidden=false;for(const d of document.querySelectorAll('dialog[open]'))d.close();camera={x:1600,y:1200,zoom:Math.min(width/2700,height/1800)};$('#feed').classList.remove('visible');updateHud();}
-function split(){if(mode==='playing'&&!paused){const result=game.split(aim);toast(result.message);updateHud();}}
+function split(){if(mode==='playing'&&!paused){const result=game.split(controls.actionTarget(pointer,camera,game.center(),width,height));toast(result.message);updateHud();}}
+function consolidate(){if(mode==='playing'&&!paused){toast(game.consolidate().message);updateHud();}}
 $('#split-button').addEventListener('click',split);
-function pause(){if(mode!=='playing'||game.dead)return;paused=true;keys={};$('#pause-dialog').showModal();}
-function resume(){paused=false;keys={};$('#pause-dialog').close();canvas.focus();lastTime=performance.now();}
+$('#merge-button').addEventListener('click',consolidate);
+function pause(){if(mode!=='playing'||game.dead)return;paused=true;keys={};controls.clear();$('#pause-dialog').showModal();}
+function resume(){paused=false;keys={};controls.clear();$('#pause-dialog').close();canvas.focus();lastTime=performance.now();}
 $('#pause-button').addEventListener('click',pause);$('#resume-button').addEventListener('click',resume);$('#leave-button').addEventListener('click',toLobby);
 $('#pause-dialog').addEventListener('cancel',e=>{e.preventDefault();resume()});
 $('#again-button').addEventListener('click',()=>join());$('#edit-button').addEventListener('click',toLobby);
 $('#death-dialog').addEventListener('cancel',e=>{e.preventDefault();toLobby()});
-$('#help-button').addEventListener('click',()=>{helpPaused=paused;paused=true;keys={};$('#help-dialog').showModal()});
+$('#help-button').addEventListener('click',()=>{helpPaused=paused;paused=true;keys={};controls.clear();$('#help-dialog').showModal()});
 $('#help-dialog').addEventListener('close',()=>{paused=helpPaused;lastTime=performance.now()});
 for(const b of document.querySelectorAll('[data-close]'))b.addEventListener('click',()=>$('#'+b.dataset.close).close());
 function inputPoint(e){const box=canvas.getBoundingClientRect();pointer={x:Math.max(0,Math.min(width,e.clientX-box.left)),y:Math.max(0,Math.min(height,e.clientY-box.top)),active:true};}
 addEventListener('pointermove',e=>{if(mode==='playing'&&!paused&&(e.pointerType==='mouse'||touchActive))inputPoint(e)});
-canvas.addEventListener('pointerdown',e=>{inputPoint(e);touchActive=true;canvas.setPointerCapture(e.pointerId);canvas.focus()});
+canvas.addEventListener('pointerdown',e=>{controls.usePointer();keys={};inputPoint(e);touchActive=true;canvas.setPointerCapture(e.pointerId);canvas.focus()});
 canvas.addEventListener('pointerup',e=>{touchActive=false;if(e.pointerType!=='mouse')pointer.active=false;});
 canvas.addEventListener('pointercancel',()=>{touchActive=false;pointer.active=false});
 // Retain mouse direction when leaving the play surface or reaching a window edge.
@@ -49,11 +52,11 @@ addEventListener('keydown',e=>{
   if(e.target instanceof HTMLInputElement)return;
   if(e.code==='Escape'&&mode==='playing'&&!document.querySelector('dialog[open]')){e.preventDefault();pause();return;}
   if(mode!=='playing'||paused||game.dead)return;
-  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyA','KeyS','KeyD','KeyW'].includes(e.code))e.preventDefault();
-  keys[e.code]=true;if(e.repeat)return;if(e.code==='Space')split();
+  if(['Space','KeyC','KeyE',...MOVEMENT_KEYS].includes(e.code))e.preventDefault();
+  keys[e.code]=true;controls.press(e.code);if(e.repeat)return;if(e.code==='Space')split();if(e.code==='KeyC')consolidate();if(e.code==='KeyE')game.eject(controls.actionTarget(pointer,camera,game.center(),width,height));
 });
-addEventListener('keyup',e=>{keys[e.code]=false});
-addEventListener('blur',()=>{keys={};pointer.active=false;if(mode==='playing'&&!paused&&!game.dead)pause()});
+addEventListener('keyup',e=>{keys[e.code]=false;controls.release(e.code)});
+addEventListener('blur',()=>{keys={};controls.clear();pointer.active=false;if(mode==='playing'&&!paused&&!game.dead)pause()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='playing'&&!paused&&!game.dead)pause()});
 function die(event){paused=true;$('#death-description').textContent=`${event.name} absorbed your last bubble. Every whale started as a small holder.`;$('#peak-result').textContent=(game.peak/SUPPLY*100).toFixed(2)+'%';$('#eaten-result').textContent=game.eaten;$('#death-dialog').showModal();}
 function updateHud(){
@@ -62,11 +65,15 @@ function updateHud(){
   if(mode==='playing'&&game.player){
     const mass=game.mass(game.player),rank=ranking.findIndex(r=>r.holder.isPlayer)+1,count=game.player.cells.length,cool=game.cooldown();
     $('#player-share').innerHTML=(mass/SUPPLY*100).toFixed(2)+'<span>%</span>';$('#player-rank').textContent=rank?'#'+rank:'—';$('#cell-count').textContent=count;$('#cell-word').textContent=count===1?'bubble':'bubbles';$('#eaten-count').textContent=game.eaten;
-    $('#merge-progress').style.width=(100-cool/MERGE_TIME*100)+'%';$('#merge-status').textContent=count<2?'One wallet. Make it count.':cool>0?`Merge ready in ${Math.ceil(cool)}s`:'Overlap your bubbles to merge';
+    $('#merge-progress').style.width=(100-cool/MERGE_TIME*100)+'%';$('#merge-status').textContent=count<2?'One wallet. Make it count.':cool>0?`Merge ready in ${Math.ceil(cool)}s`:game.merging?'Consolidating…':'Overlap to merge · C to consolidate';
+    $('#merge-button').disabled=count<2||cool>0||game.merging;
+    $('#merge-label').textContent=game.merging?'Consolidating…':cool>0?`Consolidate · ${Math.ceil(cool)}s`:'Consolidate';
+    $('#merge-button').title=count<2?'You need at least two bubbles.':cool>0?`Wait ${Math.ceil(cool)} seconds since your latest split.`:'Press C to bring your bubbles together.';
+    $('#movement-hint').textContent=controls.mode==='keyboard'?'WASD active · click arena for mouse':'Mouse steering · WASD to take over';
     $('#split-button').disabled=count>=16||!game.player.cells.some(c=>c.mass>=160);
     $('#your-ranking').replaceChildren();const label=document.createElement('span');label.textContent=`${rank?'#'+rank:'—'}  ${game.player.name} · You`;const share=document.createElement('span');share.textContent=(mass/SUPPLY*100).toFixed(2)+'%';$('#your-ranking').append(label,share);
-    $('#arena-status').lastElementChild.textContent=game.player.shieldUntil>game.time?`Spawn shield · ${Math.ceil(game.player.shieldUntil-game.time)}s`:'Absorb smaller holders. Avoid the whales.';
-  }else{$('#your-ranking').innerHTML='<span>You’re next.</span><span>Join the arena ↗</span>';$('#arena-status').lastElementChild.textContent='Absorb. Split. Consolidate.';}
+    $('#arena-status').lastElementChild.textContent=game.player.shieldUntil>game.time?`Protected for ${Math.ceil(game.player.shieldUntil-game.time)}s · You can eat`:'Absorb smaller holders. Avoid the whales.';
+  }else{$('#your-ranking').innerHTML='<span>You’re next.</span><span>Join the arena ↗</span>';$('#arena-status').lastElementChild.textContent='Absorb. Split. Consolidate.';$('#movement-hint').textContent='Mouse or WASD to steer';}
 }
 function circle(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);}
 function draw(){
@@ -123,16 +130,14 @@ function drawEdgeIndicators(){
 }
 function drawMini(){mctx.clearRect(0,0,160,108);mctx.strokeStyle='#596f4b';mctx.strokeRect(.5,.5,159,107);for(const o of OBSTACLES){mctx.beginPath();o.points.forEach((p,i)=>i?mctx.lineTo(p.x/WORLD.width*160,p.y/WORLD.height*108):mctx.moveTo(p.x/WORLD.width*160,p.y/WORLD.height*108));mctx.closePath();mctx.fillStyle='#44514b';mctx.fill()}for(const h of game.holders)for(const c of h.cells){mctx.beginPath();mctx.arc(c.x/WORLD.width*160,c.y/WORLD.height*108,h.isPlayer?3.2:Math.max(1.1,radius(c.mass)/45),0,7);mctx.fillStyle=h.color+(h.isPlayer?'ff':'60');mctx.fill()}mctx.strokeStyle='#c3f77445';const w=width/camera.zoom/WORLD.width*160,h=height/camera.zoom/WORLD.height*108;mctx.strokeRect(camera.x/WORLD.width*160-w/2,camera.y/WORLD.height*108-h/2,w,h);}
 function frame(now){
-  const dt=Math.min((now-lastTime)/1000||.016,.04);lastTime=now;
+  const elapsed=Math.max(0,(now-lastTime)/1000||.016),dt=Math.min(elapsed,.04);lastTime=now;
   if(mode==='playing'&&!paused&&!game.dead){
     const center=game.center();
-    let dx=Number(!!(keys.ArrowRight||keys.KeyD))-Number(!!(keys.ArrowLeft||keys.KeyA)),dy=Number(!!(keys.ArrowDown||keys.KeyS))-Number(!!keys.ArrowUp);
-    if(dx||dy)aim={x:center.x+dx*450,y:center.y+dy*450};
-    else aim=steeringTarget(pointer,camera,center,width,height);
-    if(keys.KeyW)game.eject(aim);
-    game.update(dt,{target:aim});
+    aim=controls.target(pointer,camera,center,width,height);
+    if(keys.KeyE)game.eject(controls.actionTarget(pointer,camera,center,width,height));
+    game.advance(elapsed,{target:aim});
     if(game.player.cells.length){const target=game.center();camera.x+=(target.x-camera.x)*Math.min(1,dt*6);camera.y+=(target.y-camera.y)*Math.min(1,dt*6);const total=game.mass(game.player),spread=Math.max(...game.player.cells.map(c=>Math.hypot(c.x-target.x,c.y-target.y)+radius(c.mass)));const zoom=Math.min(width<760?.86:1,.92/(Math.pow(total/900,.12)),Math.min(width,height)/(spread*2+220));camera.zoom+=(zoom-camera.zoom)*Math.min(1,dt*2);}
-    for(const event of game.events.splice(0)){if(event.type==='eat')toast(`Absorbed ${event.name} · +${(event.mass/SUPPLY*100).toFixed(2)}%`);if(event.type==='death')die(event);}
+    for(const event of game.events.splice(0)){if(event.type==='eat')toast(`Absorbed ${event.name} · +${(event.mass/SUPPLY*100).toFixed(2)}%`);if(event.type==='bot-eat'&&now>toastUntil)toast(`${event.name} absorbed ${event.victim}`);if(event.type==='death')die(event);}
   }
   draw();if(now-hudAt>150){updateHud();hudAt=now;}if(now>toastUntil)$('#feed').classList.remove('visible');requestAnimationFrame(frame);
 }
