@@ -30,9 +30,9 @@ export function resolveWalls(cell) {
     for(const obstacle of OBSTACLES) {
       const hit=polygonContact(cell,obstacle.points);
       if(hit.inside||hit.distance<r) {
-        let dx=cell.x-hit.nearest.x,dy=cell.y-hit.nearest.y,d=hit.distance;
-        if(d<.001){const center=obstacle.points.reduce((p,v)=>({x:p.x+v.x/obstacle.points.length,y:p.y+v.y/obstacle.points.length}),{x:0,y:0});dx=cell.x-center.x;dy=cell.y-center.y;d=Math.hypot(dx,dy)||1;}
-        const sign=hit.inside?-1:1,amount=hit.inside?r+hit.distance+.1:r-hit.distance+.1;
+        let dx=cell.x-hit.nearest.x,dy=cell.y-hit.nearest.y,d=hit.distance,sign=hit.inside?-1:1;
+        if(d<.001){const center=obstacle.points.reduce((p,v)=>({x:p.x+v.x/obstacle.points.length,y:p.y+v.y/obstacle.points.length}),{x:0,y:0});dx=cell.x-center.x;dy=cell.y-center.y;d=Math.hypot(dx,dy)||1;sign=1;}
+        const amount=hit.inside?r+hit.distance+.1:r-hit.distance+.1;
         cell.x+=dx/d*amount*sign;cell.y+=dy/d*amount*sign;
         // Remove inward impulse while allowing movement along the wall.
         const nx=dx/d*sign,ny=dy/d*sign,dot=cell.vx*nx+cell.vy*ny;

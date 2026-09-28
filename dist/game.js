@@ -108,6 +108,7 @@ function draw(){
     ctx.font=`500 ${size}px "DM Sans", sans-serif`;ctx.fillStyle=h.color;
     let name=h.name;while(ctx.measureText(name).width>room&&name.length>3)name=name.slice(0,-2)+'…';
     if(sr>17){ctx.fillText(name,0,sr>34?-14:-5);ctx.font=`${Math.max(7,Math.min(10,sr*.12))}px monospace`;ctx.fillStyle=h.color+'8f';ctx.fillText(shortWallet(h.wallet),0,sr>34?4:8);}
+    else {ctx.font=`${Math.max(3,Math.min(7,sr*.3))}px monospace`;ctx.fillStyle=h.color+'a0';ctx.fillText(shortWallet(h.wallet),0,0,room);}
     if(sr>34){ctx.font=`500 ${Math.min(12,sr*.14)}px "Space Grotesk", sans-serif`;ctx.fillStyle=h.color+'a0';ctx.fillText((c.mass/SUPPLY*100).toFixed(2)+'%',0,22);}
     if(h.isPlayer&&sr>34){ctx.font='500 8px "DM Sans", sans-serif';ctx.fillStyle=h.color+'7f';ctx.fillText('YOU',0,-33)}ctx.restore();
   }
