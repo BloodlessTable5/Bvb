@@ -1,4 +1,5 @@
 import { Arena, COLORS, COLOR_NAMES, WORLD, SUPPLY, MERGE_TIME, OBSTACLES, radius, wallet, shortWallet } from './engine.mjs';
+import { steeringTarget, edgeIndicator } from './navigation.mjs';
 const $=selector=>document.querySelector(selector);
 const canvas=$('#arena'),ctx=canvas.getContext('2d'),mini=$('#mini'),mctx=mini.getContext('2d');
 const game=new Arena();
@@ -28,8 +29,7 @@ function join(name=$('#username').value.trim(),selectedColor=color){
 $('#join-form').addEventListener('submit',e=>{e.preventDefault();join()});
 function toLobby(){mode='lobby';paused=false;keys={};game.reset();document.body.classList.remove('playing');$('#join-panel').hidden=false;$('#player-panel').hidden=true;$('#action-controls').hidden=true;$('#pause-button').hidden=true;$('.footer-note').hidden=false;for(const d of document.querySelectorAll('dialog[open]'))d.close();camera={x:1600,y:1200,zoom:Math.min(width/2700,height/1800)};$('#feed').classList.remove('visible');updateHud();}
 function split(){if(mode==='playing'&&!paused){const result=game.split(aim);toast(result.message);updateHud();}}
-function merge(){if(mode==='playing'&&!paused){toast(game.consolidate().message);updateHud();}}
-$('#split-button').addEventListener('click',split);$('#merge-button').addEventListener('click',merge);
+$('#split-button').addEventListener('click',split);
 function pause(){if(mode!=='playing'||game.dead)return;paused=true;keys={};$('#pause-dialog').showModal();}
 function resume(){paused=false;keys={};$('#pause-dialog').close();canvas.focus();lastTime=performance.now();}
 $('#pause-button').addEventListener('click',pause);$('#resume-button').addEventListener('click',resume);$('#leave-button').addEventListener('click',toLobby);
@@ -39,18 +39,18 @@ $('#death-dialog').addEventListener('cancel',e=>{e.preventDefault();toLobby()});
 $('#help-button').addEventListener('click',()=>{helpPaused=paused;paused=true;keys={};$('#help-dialog').showModal()});
 $('#help-dialog').addEventListener('close',()=>{paused=helpPaused;lastTime=performance.now()});
 for(const b of document.querySelectorAll('[data-close]'))b.addEventListener('click',()=>$('#'+b.dataset.close).close());
-function inputPoint(e){const box=canvas.getBoundingClientRect();pointer={x:e.clientX-box.left,y:e.clientY-box.top,active:true};}
-canvas.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'||touchActive)inputPoint(e)});
+function inputPoint(e){const box=canvas.getBoundingClientRect();pointer={x:Math.max(0,Math.min(width,e.clientX-box.left)),y:Math.max(0,Math.min(height,e.clientY-box.top)),active:true};}
+addEventListener('pointermove',e=>{if(mode==='playing'&&!paused&&(e.pointerType==='mouse'||touchActive))inputPoint(e)});
 canvas.addEventListener('pointerdown',e=>{inputPoint(e);touchActive=true;canvas.setPointerCapture(e.pointerId);canvas.focus()});
 canvas.addEventListener('pointerup',e=>{touchActive=false;if(e.pointerType!=='mouse')pointer.active=false;});
 canvas.addEventListener('pointercancel',()=>{touchActive=false;pointer.active=false});
-canvas.addEventListener('pointerleave',()=>{if(!touchActive)pointer.active=false});
+// Retain mouse direction when leaving the play surface or reaching a window edge.
 addEventListener('keydown',e=>{
   if(e.target instanceof HTMLInputElement)return;
   if(e.code==='Escape'&&mode==='playing'&&!document.querySelector('dialog[open]')){e.preventDefault();pause();return;}
   if(mode!=='playing'||paused||game.dead)return;
-  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyA','KeyS','KeyD','KeyW','KeyM'].includes(e.code))e.preventDefault();
-  keys[e.code]=true;if(e.repeat)return;if(e.code==='Space')split();if(e.code==='KeyM')merge();
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyA','KeyS','KeyD','KeyW'].includes(e.code))e.preventDefault();
+  keys[e.code]=true;if(e.repeat)return;if(e.code==='Space')split();
 });
 addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{keys={};pointer.active=false;if(mode==='playing'&&!paused&&!game.dead)pause()});
@@ -62,8 +62,8 @@ function updateHud(){
   if(mode==='playing'&&game.player){
     const mass=game.mass(game.player),rank=ranking.findIndex(r=>r.holder.isPlayer)+1,count=game.player.cells.length,cool=game.cooldown();
     $('#player-share').innerHTML=(mass/SUPPLY*100).toFixed(2)+'<span>%</span>';$('#player-rank').textContent=rank?'#'+rank:'—';$('#cell-count').textContent=count;$('#cell-word').textContent=count===1?'bubble':'bubbles';$('#eaten-count').textContent=game.eaten;
-    $('#merge-progress').style.width=(100-cool/MERGE_TIME*100)+'%';$('#merge-status').textContent=count<2?'One wallet. Make it count.':cool>0?`Consolidation ready in ${Math.ceil(cool)}s`:game.merging?'Consolidating your holding…':'Ready to consolidate · Press M';
-    $('#merge-button').disabled=count<2||cool>0;$('#split-button').disabled=count>=16||!game.player.cells.some(c=>c.mass>=160);
+    $('#merge-progress').style.width=(100-cool/MERGE_TIME*100)+'%';$('#merge-status').textContent=count<2?'One wallet. Make it count.':cool>0?`Merge ready in ${Math.ceil(cool)}s`:'Overlap your bubbles to merge';
+    $('#split-button').disabled=count>=16||!game.player.cells.some(c=>c.mass>=160);
     $('#your-ranking').replaceChildren();const label=document.createElement('span');label.textContent=`${rank?'#'+rank:'—'}  ${game.player.name} · You`;const share=document.createElement('span');share.textContent=(mass/SUPPLY*100).toFixed(2)+'%';$('#your-ranking').append(label,share);
     $('#arena-status').lastElementChild.textContent=game.player.shieldUntil>game.time?`Spawn shield · ${Math.ceil(game.player.shieldUntil-game.time)}s`:'Absorb smaller holders. Avoid the whales.';
   }else{$('#your-ranking').innerHTML='<span>You’re next.</span><span>Join the arena ↗</span>';$('#arena-status').lastElementChild.textContent='Absorb. Split. Consolidate.';}
@@ -74,20 +74,13 @@ function draw(){
   const z=camera.zoom,ox=width/2-camera.x*z,oy=height/2-camera.y*z;
   ctx.save();ctx.translate(ox,oy);ctx.scale(z,z);
   ctx.fillStyle='#0c1113';ctx.fillRect(0,0,WORLD.width,WORLD.height);
-  const grid=60;ctx.fillStyle='#26302d';
-  const minX=Math.max(0,Math.floor(-ox/z/grid)*grid),maxX=Math.min(WORLD.width,(width-ox)/z),minY=Math.max(0,Math.floor(-oy/z/grid)*grid),maxY=Math.min(WORLD.height,(height-oy)/z);
-  for(let x=minX;x<maxX;x+=grid)for(let y=minY;y<maxY;y+=grid){circle(x,y,1/z);ctx.fill()}
+  const minX=Math.max(0,-ox/z),maxX=Math.min(WORLD.width,(width-ox)/z),minY=Math.max(0,-oy/z),maxY=Math.min(WORLD.height,(height-oy)/z);
   ctx.strokeStyle='#789268';ctx.lineWidth=2/z;ctx.strokeRect(0,0,WORLD.width,WORLD.height);
   ctx.strokeStyle='#56734b35';ctx.lineWidth=10/z;ctx.strokeRect(-7/z,-7/z,WORLD.width+14/z,WORLD.height+14/z);
   ctx.strokeStyle='#78926870';ctx.lineWidth=1/z;
   for(let x=0;x<=WORLD.width;x+=160){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,12/z);ctx.moveTo(x,WORLD.height);ctx.lineTo(x,WORLD.height-12/z);ctx.stroke()}
   for(let y=0;y<=WORLD.height;y+=160){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(12/z,y);ctx.moveTo(WORLD.width,y);ctx.lineTo(WORLD.width-12/z,y);ctx.stroke()}
   const cells=game.holders.flatMap(h=>h.cells.map(c=>({h,c}))).sort((a,b)=>a.c.mass-b.c.mass);
-  for(let i=0;i<cells.length;i++) {
-    const {h,c}=cells[i];let nearest=null,dist=Infinity;
-    for(let j=i+1;j<cells.length;j++){const other=cells[j];if(other.h.color!==h.color)continue;const d=Math.hypot(c.x-other.c.x,c.y-other.c.y);if(d<dist&&d<1100){nearest=other.c;dist=d;}}
-    if(nearest){ctx.beginPath();ctx.moveTo(c.x,c.y);ctx.lineTo(nearest.x,nearest.y);ctx.strokeStyle=h.color+'1b';ctx.lineWidth=.8/z;ctx.stroke();}
-  }
   for(const f of game.food){if(f.x<minX-10||f.x>maxX+10||f.y<minY-10||f.y>maxY+10)continue;circle(f.x,f.y,Math.max(2.3,Math.sqrt(f.mass)*.65));ctx.fillStyle=f.color+'76';ctx.fill();}
   for(const obstacle of OBSTACLES){
     ctx.beginPath();obstacle.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();
@@ -113,7 +106,20 @@ function draw(){
     if(h.isPlayer&&sr>34){ctx.font='500 8px "DM Sans", sans-serif';ctx.fillStyle=h.color+'7f';ctx.fillText('YOU',0,-33)}ctx.restore();
   }
   if(!reducedMotion)for(const p of game.particles){circle(p.x,p.y,p.radius+(1-p.life)*65);ctx.strokeStyle=p.color+Math.round(p.life*100).toString(16).padStart(2,'0');ctx.lineWidth=2/z;ctx.stroke();}
-  ctx.restore();drawMini();
+  ctx.restore();drawEdgeIndicators();drawMini();
+}
+function drawEdgeIndicators(){
+  if(mode!=='playing'||game.dead)return;
+  for(const holder of game.holders){
+    if(holder.isPlayer||!holder.cells.length)continue;
+    const indicators=holder.cells.map(c=>edgeIndicator({...c,radius:radius(c.mass)},camera,width,height));
+    if(indicators.some(indicator=>indicator===null))continue;
+    const nearest=holder.cells.reduce((a,b)=>Math.hypot(a.x-camera.x,a.y-camera.y)<Math.hypot(b.x-camera.x,b.y-camera.y)?a:b);
+    const marker=indicators[holder.cells.indexOf(nearest)];
+    ctx.save();ctx.translate(marker.x,marker.y);ctx.rotate(marker.angle);
+    ctx.beginPath();ctx.moveTo(6,0);ctx.lineTo(-4,-4);ctx.lineTo(-2,0);ctx.lineTo(-4,4);ctx.closePath();
+    ctx.fillStyle=holder.color+'ba';ctx.fill();ctx.restore();
+  }
 }
 function drawMini(){mctx.clearRect(0,0,160,108);mctx.strokeStyle='#596f4b';mctx.strokeRect(.5,.5,159,107);for(const o of OBSTACLES){mctx.beginPath();o.points.forEach((p,i)=>i?mctx.lineTo(p.x/WORLD.width*160,p.y/WORLD.height*108):mctx.moveTo(p.x/WORLD.width*160,p.y/WORLD.height*108));mctx.closePath();mctx.fillStyle='#44514b';mctx.fill()}for(const h of game.holders)for(const c of h.cells){mctx.beginPath();mctx.arc(c.x/WORLD.width*160,c.y/WORLD.height*108,h.isPlayer?3.2:Math.max(1.1,radius(c.mass)/45),0,7);mctx.fillStyle=h.color+(h.isPlayer?'ff':'60');mctx.fill()}mctx.strokeStyle='#c3f77445';const w=width/camera.zoom/WORLD.width*160,h=height/camera.zoom/WORLD.height*108;mctx.strokeRect(camera.x/WORLD.width*160-w/2,camera.y/WORLD.height*108-h/2,w,h);}
 function frame(now){
@@ -122,8 +128,7 @@ function frame(now){
     const center=game.center();
     let dx=Number(!!(keys.ArrowRight||keys.KeyD))-Number(!!(keys.ArrowLeft||keys.KeyA)),dy=Number(!!(keys.ArrowDown||keys.KeyS))-Number(!!keys.ArrowUp);
     if(dx||dy)aim={x:center.x+dx*450,y:center.y+dy*450};
-    else if(pointer.active)aim={x:camera.x+(pointer.x-width/2)/camera.zoom,y:camera.y+(pointer.y-height/2)/camera.zoom};
-    else aim={...center};
+    else aim=steeringTarget(pointer,camera,center,width,height);
     if(keys.KeyW)game.eject(aim);
     game.update(dt,{target:aim});
     if(game.player.cells.length){const target=game.center();camera.x+=(target.x-camera.x)*Math.min(1,dt*6);camera.y+=(target.y-camera.y)*Math.min(1,dt*6);const total=game.mass(game.player),spread=Math.max(...game.player.cells.map(c=>Math.hypot(c.x-target.x,c.y-target.y)+radius(c.mass)));const zoom=Math.min(width<760?.86:1,.92/(Math.pow(total/900,.12)),Math.min(width,height)/(spread*2+220));camera.zoom+=(zoom-camera.zoom)*Math.min(1,dt*2);}

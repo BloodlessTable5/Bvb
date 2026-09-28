@@ -47,7 +47,7 @@ export function shortWallet(address) { return address.slice(0,6)+'…'+address.s
 export class Arena {
   constructor(random = Math.random) { this.random=random; this.reset(); }
   reset() {
-    this.time=0; this.holders=[]; this.food=[]; this.events=[]; this.particles=[]; this.reserve=SUPPLY; this.nextId=1; this.eaten=0; this.peak=0; this.player=null; this.merging=false; this.dead=false; this.ejectAt=0;
+    this.time=0; this.holders=[]; this.food=[]; this.events=[]; this.particles=[]; this.reserve=SUPPLY; this.nextId=1; this.eaten=0; this.peak=0; this.player=null; this.dead=false; this.ejectAt=0;
     const names=['whale.eth','diamondhands','notyourkeys','0xBigBag','pepe.enjoyer','hodl_me','moonwalker','degen.exe','pumpkin','based.satoshi','paperhands','mint.condition','shrimp.king','wen.moon','sol.survivor','bagholder','tiny.whale','0xnoodle','just.vibing','dust.collector','green.candle','fomo.frog','lil.holder','fresh.wallet'];
     const masses=[5600,4250,3400,2900,2400,1900,1500,1200,1000,950,800,700,600,500,440,400,350,300,280,250,220,200,180,160];
     const positions=[[1260,580],[2310,1530],[2590,610],[630,1690],[640,620],[1770,1950],[2780,1990],[1580,360],[3090,1170],[480,1190],[2100,410],[1170,1520],[830,2090],[1850,1170],[1540,1600],[2280,2130],[180,1880],[2180,1040],[1520,1070],[2800,350],[560,2250],[1230,2200],[3000,1680],[1600,1290]];
@@ -90,14 +90,7 @@ export class Arena {
       cell.x-=Math.cos(angle)*r*.2;cell.y-=Math.sin(angle)*r*.2;
       resolveWalls(cell);resolveWalls(child);this.player.cells.push(child);count++;
     }
-    this.merging=false;
-    return {ok:count>0,message:count?'Split complete. Consolidate in 10s.':this.player.cells.length>=16?'16 bubbles is the limit.':'Grow a little more before splitting.'};
-  }
-  consolidate() {
-    if(!this.player||this.dead) return {ok:false,message:'Join the arena first.'};
-    if(this.player.cells.length<2) return {ok:false,message:'Your holding is already consolidated.'};
-    if(this.cooldown()>.05) return {ok:false,message:`Consolidation ready in ${Math.ceil(this.cooldown())}s.`};
-    this.merging=true;return {ok:true,message:'Bringing your bubbles together…'};
+    return {ok:count>0,message:count?'Split complete. Overlap to merge after 10s.':this.player.cells.length>=16?'16 bubbles is the limit.':'Grow a little more before splitting.'};
   }
   eject(target) {
     if(!this.player||this.dead||this.time<this.ejectAt) return false;
@@ -132,11 +125,10 @@ export class Arena {
       if(!holder.cells.length&&!holder.isPlayer&&this.time>holder.respawnAt&&this.reserve>260){this.reserve-=250;holder.cells.push(this.makeCell(250,120+this.random()*(WORLD.width-240),120+this.random()*(WORLD.height-240)));holder.shieldUntil=this.time+3;}
       for(const c of holder.cells) {
         let target;
-        if(holder.isPlayer)target=this.merging?this.center(holder):input.target;
+        if(holder.isPlayer)target=input.target;
         else {if(this.time>=c.thinkAt){c.target=this.botTarget(holder,c);c.thinkAt=this.time+.25+this.random()*.2;}target=c.target;}
         const dx=target.x-c.x,dy=target.y-c.y,d=Math.hypot(dx,dy);
         let speed=115+165/(1+radius(c.mass)/38);
-        if(holder.isPlayer&&this.merging)speed=430;
         const amount=Math.min(d,speed*dt);
         if(d>1){c.x+=dx/d*amount;c.y+=dy/d*amount;}
         c.x+=c.vx*dt;c.y+=c.vy*dt;c.vx*=Math.exp(-5*dt);c.vy*=Math.exp(-5*dt);
@@ -145,12 +137,11 @@ export class Arena {
       for(const cell of holder.cells)resolveWalls(cell);
       for(let i=0;i<holder.cells.length;i++)for(let j=i+1;j<holder.cells.length;j++) {
         const a=holder.cells[i],b=holder.cells[j],d=distance(a,b),ra=radius(a.mass),rb=radius(b.mass),ready=this.time>=Math.max(a.readyAt,b.readyAt);
-        if(ready&&d<(this.merging&&holder.isPlayer?ra+rb:Math.max(ra,rb)*.75)) {
+        if(ready&&d<Math.max(ra,rb)*.75) {
           const total=a.mass+b.mass;a.x=(a.x*a.mass+b.x*b.mass)/total;a.y=(a.y*a.mass+b.y*b.mass)/total;a.mass=total;holder.cells.splice(j--,1);
         } else if(!ready&&d<ra+rb){const n=d||1,dx=d?(a.x-b.x)/n:1,dy=d?(a.y-b.y)/n:0,force=Math.min((ra+rb-d)*.5,90*dt);a.x+=dx*force;a.y+=dy*force;b.x-=dx*force;b.y-=dy*force;}
       }
     }
-    if(this.player?.cells.length===1)this.merging=false;
     for(const f of this.food){f.x=clamp(f.x+f.vx*dt,4,WORLD.width-4);f.y=clamp(f.y+f.vy*dt,4,WORLD.height-4);f.vx*=Math.exp(-3*dt);f.vy*=Math.exp(-3*dt);resolveWalls(f);}
     const cells=this.holders.flatMap(h=>h.cells.map(c=>({h,c}))).sort((a,b)=>b.c.mass-a.c.mass);
     for(const {h,c} of cells) {
