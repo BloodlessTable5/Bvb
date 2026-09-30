@@ -1,0 +1,5 @@
+node_modules/
+.payment-lab/
+.env
+.env.*
+!.env.example

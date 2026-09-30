@@ -1,0 +1,15 @@
+{
+  "name": "holder-payment-lab",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "payment-lab": "node server/payment-server.mjs",
+    "compile:payments": "node scripts/compile-payment-contract.mjs"
+  },
+  "dependencies": {
+    "ethers": "6.17.0"
+  },
+  "devDependencies": { "solc": "0.8.37", "ganache": "7.9.2" }
+}
